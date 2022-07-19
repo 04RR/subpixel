@@ -10,18 +10,6 @@ import os
 import numpy as np
 import random
 
-# from subpixel.model import Model
-
-
-def show_batch(data):
-    pass
-
-
-def EncodingToClass(lst, classes):
-
-    lst = list(lst.detach().squeeze(0).numpy())
-    return classes[lst.index(max(lst))]
-
 
 def get_boxxes(t):
     # '{x, y, h, w, [classes]}' -> [x, y, h, w, classes]
@@ -30,6 +18,9 @@ def get_boxxes(t):
 
 
 def seed_everything(seed=42):
+    """
+    Seeds EVERYTHING.
+    """
 
     random.seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
@@ -41,6 +32,9 @@ def seed_everything(seed=42):
 
 
 def init_model(m):
+    """
+    Initialises model parameters with xavier normalisation method.
+    """
 
     seed_everything()
 
@@ -54,9 +48,16 @@ def init_model(m):
         nn.init.xavier_normal_(m.weight.data)
 
 
-
-def findLR( model : nn.Module, dataset : nn.Module, loss_fn : nn.Module ,optimizer : str , start_lr : float=1e-7, end_lr : float=1e-1, steps : float=100):
-    '''
+def findLR(
+    model: nn.Module,
+    dataset: nn.Module,
+    loss_fn: nn.Module,
+    optimizer: str,
+    start_lr: float = 1e-7,
+    end_lr: float = 1e-1,
+    steps: float = 100,
+):
+    """
     Finds the ideal initial LR for optimal training.
     model : nn.Module , the model for which ideal LR needs to be found.
 
@@ -71,20 +72,18 @@ def findLR( model : nn.Module, dataset : nn.Module, loss_fn : nn.Module ,optimiz
     end_lr : upper bound of the learning rate to be checked.
 
     steps : number of learning rates between start_lr and end_lr to be checked. 
-    '''
+    """
     seed_everything()
     lr = []
     loss = []
-    optimizer = get_optimizer(model,lr=start_lr)
+    optimizer = get_optimizer(model, lr=start_lr)
     dx = (end_lr - start_lr) / steps
 
-    x = find_batch_size(model, dataset) 
+    x = find_batch_size(model, dataset)
     if len(dataset) // steps < x:
         x = len(dataset) // steps
-    
-    scheduler = torch.optim.lr_scheduler.LambdaLR(
-        optimizer, lambda epoch: epoch + dx
-    )
+
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda epoch: epoch + dx)
     Dataloader = iter(DataLoader(dataset, x, True))
     model.train()
 
@@ -110,16 +109,15 @@ def findLR( model : nn.Module, dataset : nn.Module, loss_fn : nn.Module ,optimiz
     return lr[numpy.argmin(diff(loss) / dx)], loss, lr
 
 
-
-def find_batch_size(model : nn.Module, dataset : nn.Module) -> None:
-    '''
+def find_batch_size(model: nn.Module, dataset: nn.Module):
+    """
     Finds the batch size to be set for ideal GPU usage (95% default)
 
     model : nn.Module , model being trained.
 
     dataset : nn.Module , dataset to be loaded.
 
-    '''
+    """
 
     p, total_bits = model.find_size()
     f_before = torch.cuda.memory_reserved(0) - torch.cuda.memory_allocated(0)
@@ -140,21 +138,15 @@ def find_batch_size(model : nn.Module, dataset : nn.Module) -> None:
     return b_size
 
 
-def get_optimizer(model : nn.Module, optim : str = "adam", lr : float = 1e-3, weight_decay : float = 1e-5):
-    '''
+def get_optimizer(
+    model: nn.Module, optim: str = "adam", lr: float = 1e-3, weight_decay: float = 1e-5
+):
+    """
     returns torch.optim optimizer instance given optim string
-    '''
+    """
     if optim == "adam":
-        return torch.optim.Adam(
-            model.parameters(),
-            lr= lr,
-            weight_decay= weight_decay
-        )
+        return torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     elif optim == "sgd":
-        return torch.optim.SGD(
-            model.parameters(),
-            lr,
-            weight_decay= weight_decay
-        )
+        return torch.optim.SGD(model.parameters(), lr, weight_decay=weight_decay)
     else:
         raise NotImplementedError("Optimizer not implemented yet!!")
